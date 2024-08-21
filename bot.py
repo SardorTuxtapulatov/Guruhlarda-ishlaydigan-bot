@@ -36,16 +36,16 @@ async def start_command(message:Message):
         await message.answer(text="Assalomu alaykum")
 
 
-@dp.message(IsCheckSubChannels())
-async def kanalga_obuna(message:Message):
-    text = ""
-    inline_channel = InlineKeyboardBuilder()
-    for index,channel in enumerate(CHANNELS):
-        ChatInviteLink = await bot.create_chat_invite_link(channel)
-        inline_channel.add(InlineKeyboardButton(text=f"{index+1}-kanal",url=ChatInviteLink.invite_link))
-    inline_channel.adjust(1,repeat=True)
-    button = inline_channel.as_markup()
-    await message.answer(f"{text} kanallarga azo bo'ling",reply_markup=button)
+# @dp.message(IsCheckSubChannels())
+# async def kanalga_obuna(message:Message):
+#     text = ""
+#     inline_channel = InlineKeyboardBuilder()
+#     for index,channel in enumerate(CHANNELS):
+#         ChatInviteLink = await bot.create_chat_invite_link(channel)
+#         inline_channel.add(InlineKeyboardButton(text=f"{index+1}-kanal",url=ChatInviteLink.invite_link))
+#     inline_channel.adjust(1,repeat=True)
+#     button = inline_channel.as_markup()
+#     await message.answer(f"{text} kanallarga azo bo'ling",reply_markup=button)
 
 
 
@@ -91,83 +91,96 @@ async def send_advert(message:Message,state:FSMContext):
     await state.clear()
 
 
+@dp.message(and_f(F.reply_to_message,F.text=="/setphoto"))
+async def setphoto_group(message:Message):
+    await message.delete()
+    photo =  message.reply_to_message.photo[-1].file_id
+    file = await bot.get_file(photo)
+    file_path = file.file_path
+    file = await bot.download_file(file_path)
+    file = file.read()
+    await message.chat.set_photo(photo=input_file.BufferedInputFile(file=file,filename="sardor.jpg"))
+    await message.answer("Gruh rasmi uzgardi")
+
+
+@dp.message(F.text.startswith('/setname'))
+async def set_name(message: Message):
+    await message.delete()
+    text = message.text.split("/setname")[1]
+    print(text)
+    if text:
+        await message.chat.set_title(text)
+
+
 @dp.message(F.new_chat_member)
 async def new_member(message:Message):
     user = message.new_chat_member.get("first_name")
-    await message.answer(f"{user} Guruhga xush kelibsiz!")
+    notification_message = await message.answer(f"{user} Guruhga xush kelibsiz!")
     await message.delete()
+    await asyncio.sleep(10)  # 300 seconds = 5 minutes
+    await notification_message.delete()      
+
+
 
 @dp.message(F.left_chat_member)
 async def new_member(message:Message):
     # print(message.new_chat_member)
     user = message.left_chat_member.full_name
-    await message.answer(f"{user} Xayr!")
+    notification_message = await message.answer(f"{user} Xayr!")
     await message.delete()
+    await asyncio.sleep(10)  # 300 seconds = 5 minutes
+    await notification_message.delete()    
 
 @dp.message(and_f(F.reply_to_message,F.text=="/ban"))
 async def ban_user(message:Message):
+    await message.delete()
     user_id =  message.reply_to_message.from_user.id
     await message.chat.ban_sender_chat(user_id)
-    await message.answer(f"{message.reply_to_message.from_user.first_name} guruhdan chiqarilib yuborildingiz.")
+    notification_message = await message.answer(f"{message.reply_to_message.from_user.first_name} guruhdan chiqarilib yuborildingiz.")
+    await asyncio.sleep(10)  # 300 seconds = 5 minutes
+    await notification_message.delete()
 
 @dp.message(and_f(F.reply_to_message,F.text=="/unban"))
 async def unban_user(message:Message):
+    await message.delete()
     user_id =  message.reply_to_message.from_user.id
     await message.chat.unban_sender_chat(user_id)
-    await message.answer(f"{message.reply_to_message.from_user.first_name} guruhga qaytishingiz mumkin.")
+    notification_message = await message.answer(f"{message.reply_to_message.from_user.first_name} guruhga qaytishingiz mumkin.")
+    await asyncio.sleep(10)  # 300 seconds = 5 minutes
+    await notification_message.delete()
+    
 
 from time import time
 @dp.message(and_f(F.reply_to_message,F.text=="/mute"))
 async def mute_user(message:Message):
+    await message.delete()
     user_id =  message.reply_to_message.from_user.id
     permission = ChatPermissions(can_send_messages=False)
+    
+    until_date = int(time()) + 300  # 5 minutes block time
+    await message.chat.restrict(user_id=user_id, permissions=permission, until_date=until_date)
+    notification_message = await message.answer(f"{message.reply_to_message.from_user.first_name} 5 minutga blocklandingiz")
+    
+    # Schedule the deletion of the notification message after 5 minutes
+    await asyncio.sleep(20)  # 300 seconds = 5 minutes
+    await notification_message.delete()
 
-    until_date = int(time()) + 300 # 1minut guruhga yoza olmaydi
-    await message.chat.restrict(user_id=user_id,permissions=permission,until_date=until_date)
-    await message.answer(f"{message.reply_to_message.from_user.first_name} 5 minutga blocklandingiz")
 
 @dp.message(and_f(F.reply_to_message,F.text=="/unmute"))
 async def unmute_user(message:Message):
+    await message.delete()
     user_id =  message.reply_to_message.from_user.id
     permission = ChatPermissions(can_send_messages=True)
     await message.chat.restrict(user_id=user_id,permissions=permission)
-    await message.answer(f"{message.reply_to_message.from_user.first_name} guruhga yoza olasiz")
+    notification_message = await message.answer(f"{message.reply_to_message.from_user.first_name} guruhga yoza olasiz")
 
-
-# import time
-
-# @dp.message(and_f(F.reply_to_message,F.text.startswith('/mute')))
-# async def mute_user(message:Message):
-#     member = await message.chat.get_member(message.from_user.id)
-    
-#     if member.status in ("administrator","creator"):
-#         try:
-#             minut = int(message.text.split("/mute")[1])
-#         except:
-#             minut = 1
-        
-#         until_date = time.time() + minut*60
-#         user_id =  message.reply_to_message.from_user.id
-#         permission = ChatPermissions(can_send_messages=False)
-
-#         await message.chat.restrict(user_id=user_id,permissions=permission,until_date=until_date)
-#         await message.answer(f"{message.reply_to_message.from_user.first_name} {minut} minutga blocklandingiz")
-#         await message.reply_to_message.delete()
-#     else:
-#         await message.answer("Siz admin emassiz")
-
-    
-# @dp.message(and_f(F.reply_to_message,F.text=="/unmute"))
-# async def unmute_user(message:Message):
-#     user_id =  message.reply_to_message.from_user.id
-#     permisins = ChatPermissions(can_send_messages=True)
-#     await message.chat.restrict(user_id=user_id,permissions=permisins)
-#     await message.answer(f"{message.reply_to_message.from_user.first_name} blokdan olindingiz")
+    await asyncio.sleep(10)  # 300 seconds = 5 minutes
+    await notification_message.delete()
 
 
 
 from time import time
-xaqoratli_sozlar = {"tentak","jinni,to'poy,axmoq"}
+xaqoratli_sozlar = {"tentak","jinni","axmoq","garang","dalbayob","ko't","dalban","iflos"}
 @dp.message(and_f(F.chat.func(lambda chat: chat.type == "supergroup"),F.text ))
 async def tozalash(message:Message):
     text = message.text
@@ -179,53 +192,11 @@ async def tozalash(message:Message):
             until_date = int(time()) + 300 # 1minut guruhga yoza olmaydi
             permission = ChatPermissions(can_send_messages=False)
             await message.chat.restrict(user_id=user_id,permissions=permission,until_date=until_date)
-            await message.answer(text=f"{message.from_user.mention_html()} guruhda so'kinganingiz uchun 5 minutga blokga tushdingiz")
+            notification_message = await message.answer(text=f"{message.from_user.mention_html()} guruhda so'kinganingiz uchun 5 minutga blokga tushdingiz")
             await message.delete() 
             break
-    
-
-@dp.message(and_f(F.chat.func(lambda chat: chat.type == "supergroup"),F.animation))
-async def git_yuborma(message:Message):
-    user_id =  message.from_user.id
-    await message.chat.ban_sender_chat(user_id)
-    await message.answer(f"{message.from_user.mention_html()} Siz katta xato qildingiz va 1 soatga bloklandingiz😔 ")
-    await message.delete()
-
-          
-@dp.message(and_f(F.chat.func(lambda chat: chat.type == "supergroup"),F.photo))
-async def gef_yuborma(message:Message):
-            user_id =  message.from_user.id
-            await message.chat.ban_sender_chat(user_id)
-            await message.answer_photo(f"{message.from_user.mention_html()} E bolla katta xato qilding rasm tashlab 1 soatga bliklanding 😔")
-            await message.delete()
-
-@dp.message(and_f(F.chat.func(lambda chat: chat.type == "supergroup"),F.video))
-async def gef_yuborma(message:Message):
-            user_id =  message.from_user.id
-            await message.chat.ban_sender_chat(user_id)
-            await message.answer_video(f"{message.from_user.mention_html()} E bolla katta xato qilding vidyo tashlab 1 soatga bloklanding 😔")
-            await message.delete()
-          
-
-
-@dp.message(and_f(F.reply_to_message,F.text=="/setphoto"))
-async def setphoto_group(message:Message):
-    photo =  message.reply_to_message.photo[-1].file_id
-    file = await bot.get_file(photo)
-    file_path = file.file_path
-    file = await bot.download_file(file_path)
-    file = file.read()
-    await message.chat.set_photo(photo=input_file.BufferedInputFile(file=file,filename="asd.jpg"))
-    await message.answer("Gruh rasmi uzgardi")
-
-
-@dp.message(F.text.startswith('/setname'))
-async def set_name(message: Message):
-    text = message.text.split("/setname")[1]
-    print(text)
-    if text:
-        await message.chat.set_title(text)
-
+    await asyncio.sleep(20)  # 300 seconds = 5 minutes
+    await notification_message.delete()
 
 
 @dp.startup()
