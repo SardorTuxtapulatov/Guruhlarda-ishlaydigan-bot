@@ -49,46 +49,6 @@ async def start_command(message: Message):
         reply_markup=markup
     )
 
-    
-
-
-# from aiogram.types import CallbackQuery
-
-# @dp.callback_query(lambda c: c.data == "add_to_group")
-# async def handle_add_to_group(callback_query: CallbackQuery):
-#     # Create an inline keyboard with buttons for each group
-#     inline_keyboard = []
-#     for channel_id in CHANNELS:
-#         chat = await bot.get_chat(chat_id=channel_id)
-#         button = InlineKeyboardButton(text=f"Invite {chat.title}", url=f"https://t.me/{chat.username}")
-#         inline_keyboard.append([button])  # Each button as a row
-
-#     markup = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-
-#     await callback_query.message.edit_text(
-#         text="Quyidagi guruhlarga botni taklif qilishingiz mumkin:",
-#         reply_markup=markup
-#     )
-
-
-
-
-
-# @dp.message(IsCheckSubChannels())
-# async def kanalga_obuna(message:Message):
-#     text = ""
-#     inline_channel = InlineKeyboardBuilder()
-#     for index,channel in enumerate(CHANNELS):
-#         ChatInviteLink = await bot.create_chat_invite_link(channel)
-#         inline_channel.add(InlineKeyboardButton(text=f"{index+1}-kanal",url=ChatInviteLink.invite_link))
-#     inline_channel.adjust(1,repeat=True)
-#     button = inline_channel.as_markup()
-#     await message.answer(f"{text} kanallarga azo bo'ling",reply_markup=button)
-
-
-
-
-
 #Admin panel uchun
 @dp.message(Command("admin"),IsBotAdminFilter(ADMINS))
 async def is_admin(message:Message):
@@ -227,13 +187,6 @@ async def set_admin(message: Message):
 
     # Log the action
     logging.info(f"Admin command executed by {message.from_user.full_name} ({message.from_user.id}) in chat {message.chat.title} ({message.chat.id}).")
-
-
-
-
-
-
-
 #setadmin==================================================================================--------------------------
 
 @dp.message(F.left_chat_member)
