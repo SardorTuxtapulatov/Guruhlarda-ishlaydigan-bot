@@ -15,7 +15,7 @@ from keyboard_buttons import admin_keyboard
 from aiogram.fsm.context import FSMContext
 from middlewares.throttling import ThrottlingMiddleware #new
 from states.reklama import Adverts
-from aiogram.types import InlineKeyboardButton
+from aiogram.types import InlineKeyboardButton,InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 import time 
 ADMINS = config.ADMINS
@@ -25,15 +25,53 @@ CHANNELS = config.CHANNELS
 dp = Dispatcher()
 
 
+
+
 @dp.message(CommandStart())
-async def start_command(message:Message):
+async def start_command(message: Message):
     full_name = message.from_user.full_name
     telegram_id = message.from_user.id
+
     try:
-        db.add_user(full_name=full_name,telegram_id=telegram_id)
-        await message.answer(text="Assalomu alaykum, botimizga hush kelibsiz")
-    except:
-        await message.answer(text="Assalomu alaykum")
+        db.add_user(full_name=full_name, telegram_id=telegram_id)
+    except Exception as e:
+        logging.exception(f"Failed to add user: {e}")
+
+    # Creating an inline keyboard with buttons
+    inline_keyboard = [
+        [InlineKeyboardButton(text="Add to Group", callback_data="add_to_group")],
+    ]
+
+    markup = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+    await message.answer(
+        text="Assalomu alaykum, botimizga hush kelibsiz. Quyidagi tugma orqali guruhga qo'shish bo'yicha ko'rsatmalarni ko'rishingiz mumkin:",
+        reply_markup=markup
+    )
+
+    
+
+
+# from aiogram.types import CallbackQuery
+
+# @dp.callback_query(lambda c: c.data == "add_to_group")
+# async def handle_add_to_group(callback_query: CallbackQuery):
+#     # Create an inline keyboard with buttons for each group
+#     inline_keyboard = []
+#     for channel_id in CHANNELS:
+#         chat = await bot.get_chat(chat_id=channel_id)
+#         button = InlineKeyboardButton(text=f"Invite {chat.title}", url=f"https://t.me/{chat.username}")
+#         inline_keyboard.append([button])  # Each button as a row
+
+#     markup = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+#     await callback_query.message.edit_text(
+#         text="Quyidagi guruhlarga botni taklif qilishingiz mumkin:",
+#         reply_markup=markup
+#     )
+
+
+
 
 
 # @dp.message(IsCheckSubChannels())
@@ -100,16 +138,37 @@ async def setphoto_group(message:Message):
     file = await bot.download_file(file_path)
     file = file.read()
     await message.chat.set_photo(photo=input_file.BufferedInputFile(file=file,filename="sardor.jpg"))
-    await message.answer("Gruh rasmi uzgardi")
+    notification_message = await message.answer("Guruh rasmi uzgardi")
+    await asyncio.sleep(10)  # 300 seconds = 5 minutes
+    await notification_message.delete()
 
 
-@dp.message(F.text.startswith('/setname'))
+@dp.message(and_f(IsBotAdminFilter(ADMINS), F.text.startswith('/setname')))
 async def set_name(message: Message):
+    # Delete the command message to keep the chat clean
     await message.delete()
-    text = message.text.split("/setname")[1]
-    print(text)
-    if text:
-        await message.chat.set_title(text)
+
+    # Extract the new group name from the command
+    new_title = message.text.split("/setname", 1)[1].strip()
+
+    # Check if a new title was provided
+    if new_title:
+        try:
+            # Set the new group title
+            await message.chat.set_title(new_title)
+            # Notify the group about the title change
+            notification_message = await message.answer(f"Guruh nomi o'zgartirildi: {new_title}")
+            
+            # Optionally delete the notification message after some time
+            await asyncio.sleep(10)
+            await notification_message.delete()
+        except Exception as e:
+            # Handle any errors that occur (e.g., insufficient permissions)
+            logging.exception(f"Failed to set group title: {e}")
+            await message.answer("Guruh nomini o'zgartirishda xatolik yuz berdi. Botda yetarli huquqlar borligiga ishonch hosil qiling.")
+    else:
+        await message.answer("Iltimos, guruh uchun yangi nomni kiriting.")
+
 
 
 @dp.message(F.new_chat_member)
@@ -119,8 +178,63 @@ async def new_member(message:Message):
     await message.delete()
     await asyncio.sleep(10)  # 300 seconds = 5 minutes
     await notification_message.delete()      
+#setadmin------------------------------------------------------------------------------------------------------
+
+from aiogram import types
+
+@dp.message(and_f(F.reply_to_message, F.text == "/setadmin"))
+async def set_admin(message: Message):
+    # Delete the command message to keep the chat clean
+    await message.delete()
+
+    # Get the chat (group) information
+    chat = await bot.get_chat(message.chat.id)
+    owner_id = chat.owner.user.id  # ID of the group owner
+
+    # Get the command sender's ID
+    user_id = message.from_user.id
+
+    # Check if the command sender is the group owner
+    if user_id == owner_id:
+        # Get the user to be promoted (the one who was replied to)
+        user_to_promote = message.reply_to_message.from_user.id
+        
+        try:
+            # Promote the user to admin with the desired permissions
+            await bot.promote_chat_member(
+                chat_id=message.chat.id,
+                user_id=user_to_promote,
+                can_change_info=True,
+                can_delete_messages=True,
+                can_invite_users=True,
+                can_restrict_members=True,
+                can_pin_messages=True,
+                can_promote_members=True
+            )
+            notification_message = await message.answer(
+                f"{message.reply_to_message.from_user.first_name} has been promoted to admin."
+            )
+        except Exception as e:
+            logging.exception(f"Failed to promote user: {e}")
+            notification_message = await message.answer(
+                "Failed to promote the user to admin. Please ensure the bot has sufficient permissions."
+            )
+    else:
+        notification_message = await message.answer("Only the group owner can promote members to admin.")
+
+    await asyncio.sleep(10)  # Optionally delete the notification after some time
+    await notification_message.delete()
+
+    # Log the action
+    logging.info(f"Admin command executed by {message.from_user.full_name} ({message.from_user.id}) in chat {message.chat.title} ({message.chat.id}).")
 
 
+
+
+
+
+
+#setadmin==================================================================================--------------------------
 
 @dp.message(F.left_chat_member)
 async def new_member(message:Message):
