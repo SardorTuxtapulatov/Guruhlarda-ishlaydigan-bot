@@ -14,13 +14,11 @@ async def set_default_commands(bot: Bot):
 
 async def set_default_command(bot: Bot):
     commands = [
-        BotCommand(command="/ban", description="Botni ishga tushirish"),
-        BotCommand(command="/unban", description="Yordam"),
-        BotCommand(command="/mute", description="Biz haqimizda"),
-        BotCommand(command="/unmute", description="Biz haqimizda"),
-        BotCommand(command="/setadmin", description="Biz haqimizda"),
-        BotCommand(command="/unadmin", description="Biz haqimizda"),
-        BotCommand(command="/setadmin", description="Biz haqimizda"),
-
+        BotCommand(command="/ban", description="foydalanuvchiga ban berib guruhdan chiqarish"),
+        BotCommand(command="/unban", description="foydalanuvchini bandan chiqarish"),
+        BotCommand(command="/mute", description="foydalanuvchini guruhga yozishini cheklash"),
+        BotCommand(command="/unmute", description="foydalanuvchiga imtiyozlarini qaytarish"),
+        BotCommand(command="/setadmin", description="foydalanuvchiga admin berish"),
+        BotCommand(command="/unadmin", description="foydalanuchidan adminni olish"),
     ]
     await bot.set_my_commands(commands=commands, scope=BotCommandScopeAllGroupChats())
